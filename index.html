@@ -62,7 +62,7 @@
     text-transform: uppercase; color: var(--pending-text); background: var(--pending-border);
     border-radius: 100px; padding: 2px 8px; white-space: nowrap;
   }
-  .details { color: var(--text-dim); font-size: 0.85rem; margin-top: 5px; line-height: 1.4; }
+  .details-line { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 6px; line-height: 1.4; }
   .note {
     margin-top: 8px; font-size: 0.82rem; color: var(--pending-text);
     background: rgba(0,0,0,0.03); border-radius: 8px; padding: 7px 10px;
@@ -95,7 +95,7 @@
   }
   .actions { display: flex; gap: 8px; margin-top: 12px; }
   .actions button {
-    font-size: 0.8rem; font-weight: 600; border-radius: 8px; padding: 6px 12px;
+    font-size: 0.8rem; font-weight: 600; border-radius: 100px; padding: 6px 14px;
     cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
     display: inline-flex; align-items: center; gap: 5px;
   }
@@ -232,6 +232,7 @@
 
     var preview = isPending ? pendingPreview(t) : null;
     var errMsg = errorIds[t.id];
+    var hasExpand = !!(t.raw_transcript || t.details);
 
     var actionsHtml;
     if (isPending) {
@@ -261,13 +262,15 @@
           '</div>' +
           (isPending ? '<span class="pending-pill">Pending</span>' : '') +
         '</div>' +
-        (t.details ? '<div class="details">' + esc(t.details) + '</div>' : '') +
         (isPending && t.confidence_note ? '<div class="note">' + esc(t.confidence_note) + '</div>' : '') +
         (preview ? '<div class="preview">' + preview + '</div>' : '') +
         (errMsg ? '<div class="error-banner">' + esc(errMsg) + '</div>' : '') +
         '<div class="meta-row">' + chips.join("") + '</div>' +
-        '<button class="raw-toggle" data-raw-toggle="' + t.id + '">Show original</button>' +
-        '<div class="raw-text" data-raw-text="' + t.id + '" hidden>' + esc(t.raw_transcript) + '</div>' +
+        (hasExpand ? '<button class="raw-toggle" data-raw-toggle="' + t.id + '">Show original</button>' : '') +
+        (hasExpand ? '<div class="raw-text" data-raw-text="' + t.id + '" hidden>' +
+          (t.details ? '<div class="details-line">' + esc(t.details) + '</div>' : '') +
+          (t.raw_transcript ? esc(t.raw_transcript) : '') +
+        '</div>' : '') +
         actionsHtml +
       '</div>';
   }
