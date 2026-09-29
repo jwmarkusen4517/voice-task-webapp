@@ -14,6 +14,11 @@
     --accent: #a8562f;
     --danger: #b8503f;
     --radius: 12px;
+
+    --p1-bg: #fdecea; --p1-border: #e3a89d; --p1-solid: #c0392b;
+    --p2-bg: #fdf6df; --p2-border: #e3cd8c; --p2-solid: #b7930f;
+    --p3-bg: #e9f1fb; --p3-border: #a9c5e6; --p3-solid: #3b6fb0;
+
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
@@ -21,12 +26,20 @@
       --bg: #171613; --surface: #211f1b; --border: #363228;
       --text: #ece8e0; --text-dim: #a39c8e; --accent: #e08a5b;
       --danger: #e08170;
+
+      --p1-bg: #3a1f1c; --p1-border: #6b3a33; --p1-solid: #e0685a;
+      --p2-bg: #362f18; --p2-border: #6b5d2f; --p2-solid: #d8bb56;
+      --p3-bg: #1c2a3a; --p3-border: #3a5570; --p3-solid: #6ea0e0;
     }
   }
   :root[data-theme="dark"] {
     --bg: #171613; --surface: #211f1b; --border: #363228;
     --text: #ece8e0; --text-dim: #a39c8e; --accent: #e08a5b;
     --danger: #e08170;
+
+    --p1-bg: #3a1f1c; --p1-border: #6b3a33; --p1-solid: #e0685a;
+    --p2-bg: #362f18; --p2-border: #6b5d2f; --p2-solid: #d8bb56;
+    --p3-bg: #1c2a3a; --p3-border: #3a5570; --p3-solid: #6ea0e0;
   }
   * { box-sizing: border-box; }
   body {
@@ -43,8 +56,29 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 14px 16px; position: relative;
   }
+  .card.p1 { background: var(--p1-bg); border-color: var(--p1-border); }
+  .card.p2 { background: var(--p2-bg); border-color: var(--p2-border); }
+  .card.p3 { background: var(--p3-bg); border-color: var(--p3-border); }
+
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .title { font-weight: 600; font-size: 0.98rem; line-height: 1.35; }
+  .title-row { display: flex; align-items: flex-start; gap: 6px; flex: 1; min-width: 0; }
+  .title { font-weight: 600; font-size: 0.98rem; line-height: 1.35; flex: 1; word-break: break-word; }
+  .title-input {
+    font-weight: 600; font-size: 0.98rem; line-height: 1.35; font-family: inherit;
+    flex: 1; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 6px;
+    background: var(--surface); color: var(--text); min-width: 0;
+  }
+  .edit-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-dim);
+    font-size: 0.85rem; padding: 2px 4px; flex-shrink: 0; line-height: 1;
+  }
+  .edit-btn:hover { color: var(--accent); }
+  .title-save-row { display: flex; gap: 6px; margin-top: 6px; }
+  .title-save-row button {
+    font-size: 0.75rem; font-weight: 600; border-radius: 100px; padding: 4px 12px;
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+
   .details-line { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 6px; line-height: 1.4; }
   .error-banner {
     margin-top: 8px; font-size: 0.8rem; color: var(--danger);
@@ -66,7 +100,21 @@
     margin-top: 6px; font-size: 0.82rem; color: var(--text-dim); font-style: italic;
     border-left: 2px solid var(--border); padding-left: 10px;
   }
-  .actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+
+  .priority-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+  .priority-label { font-size: 0.7rem; color: var(--text-dim); margin-right: 2px; }
+  .priority-btn {
+    width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--surface); color: var(--text-dim);
+    font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .priority-btn:disabled { opacity: 0.5; cursor: default; }
+  .priority-btn.on-1 { background: var(--p1-solid); border-color: var(--p1-solid); color: #fff; }
+  .priority-btn.on-2 { background: var(--p2-solid); border-color: var(--p2-solid); color: #fff; }
+  .priority-btn.on-3 { background: var(--p3-solid); border-color: var(--p3-solid); color: #fff; }
+
+  .actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
   .actions button {
     font-size: 0.8rem; font-weight: 600; border-radius: 100px; padding: 6px 14px;
     cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
@@ -106,8 +154,9 @@
   var emptyEl = document.getElementById("empty");
   var statusEl = document.getElementById("statusLine");
   var allTasks = [];
-  var busyIds = {};   // task id -> true while an update is in flight
-  var errorIds = {};  // task id -> error message to show inline
+  var busyIds = {};    // task id -> true while an update is in flight
+  var errorIds = {};   // task id -> error message to show inline
+  var editingIds = {}; // task id -> draft title text while editing
 
   function esc(s) {
     var d = document.createElement("div");
@@ -124,8 +173,16 @@
     } catch (e) { return ""; }
   }
 
+  function priorityRank(p) {
+    return p === 1 || p === 2 || p === 3 ? p : 4;
+  }
+
+  // Grouped by priority (1, 2, 3, then no priority), and by position (most
+  // recent first) within each group.
   function sortedTasks() {
     return allTasks.slice().sort(function (a, b) {
+      var pr = priorityRank(a.priority) - priorityRank(b.priority);
+      if (pr !== 0) return pr;
       return (b.position || 0) - (a.position || 0);
     });
   }
@@ -135,7 +192,9 @@
 
     emptyEl.hidden = sorted.length !== 0;
     listEl.innerHTML = sorted.map(function (t, i) {
-      return renderCard(t, i === 0, i === sorted.length - 1);
+      var prevSame = i > 0 && priorityRank(sorted[i - 1].priority) === priorityRank(t.priority);
+      var nextSame = i < sorted.length - 1 && priorityRank(sorted[i + 1].priority) === priorityRank(t.priority);
+      return renderCard(t, !prevSame, !nextSame);
     }).join("");
 
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-up]"), function (btn) {
@@ -155,16 +214,77 @@
         btn.textContent = el && !el.hidden ? "Hide original" : "Show original";
       });
     });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-priority]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-priority");
+        var level = parseInt(btn.getAttribute("data-level"), 10);
+        setPriority(id, level);
+      });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-edit-title]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-edit-title");
+        var t = allTasks.find(function (x) { return x.id === id; });
+        editingIds[id] = t ? t.title : "";
+        render();
+        var input = listEl.querySelector('[data-title-input="' + id + '"]');
+        if (input) { input.focus(); input.select(); }
+      });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-title-input]"), function (input) {
+      var id = input.getAttribute("data-title-input");
+      input.addEventListener("input", function () { editingIds[id] = input.value; });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); saveTitle(id); }
+        else if (e.key === "Escape") { e.preventDefault(); cancelTitleEdit(id); }
+      });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-save-title]"), function (btn) {
+      btn.addEventListener("click", function () { saveTitle(btn.getAttribute("data-save-title")); });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-cancel-title]"), function (btn) {
+      btn.addEventListener("click", function () { cancelTitleEdit(btn.getAttribute("data-cancel-title")); });
+    });
   }
 
   function renderCard(t, isFirst, isLast) {
     var isBusy = !!busyIds[t.id];
     var hasExpand = !!(t.raw_transcript || t.details);
     var errMsg = errorIds[t.id];
+    var priority = priorityRank(t.priority) <= 3 ? t.priority : null;
+    var priorityClass = priority ? " p" + priority : "";
+    var isEditing = editingIds.hasOwnProperty(t.id);
 
     var chips = [];
     if (t.due_date) chips.push('<span class="chip">Due ' + esc(fmtDate(t.due_date)) + '</span>');
     chips.push('<span class="chip">' + esc(fmtDate(t.created_at)) + '</span>');
+
+    var titleHtml;
+    if (isEditing) {
+      titleHtml =
+        '<div class="title-row">' +
+          '<input class="title-input" data-title-input="' + t.id + '" value="' + esc(editingIds[t.id]) + '">' +
+        '</div>' +
+        '<div class="title-save-row">' +
+          '<button data-save-title="' + t.id + '">Save</button>' +
+          '<button data-cancel-title="' + t.id + '">Cancel</button>' +
+        '</div>';
+    } else {
+      titleHtml =
+        '<div class="title-row">' +
+          '<div class="title">' + esc(t.title) + '</div>' +
+          '<button class="edit-btn" data-edit-title="' + t.id + '" ' + (isBusy ? "disabled" : "") + ' title="Edit title">&#9998;</button>' +
+        '</div>';
+    }
+
+    var priorityHtml =
+      '<div class="priority-row">' +
+        '<span class="priority-label">Priority</span>' +
+        [1, 2, 3].map(function (level) {
+          var on = priority === level ? " on-" + level : "";
+          return '<button class="priority-btn' + on + '" data-priority="' + t.id + '" data-level="' + level + '" ' + (isBusy ? "disabled" : "") + '>' + level + '</button>';
+        }).join("") +
+      '</div>';
 
     var actionsHtml =
       '<div class="actions">' +
@@ -174,9 +294,9 @@
       '</div>';
 
     return '' +
-      '<div class="card">' +
+      '<div class="card' + priorityClass + '">' +
         '<div class="card-top">' +
-          '<div class="title">' + esc(t.title) + '</div>' +
+          titleHtml +
         '</div>' +
         (errMsg ? '<div class="error-banner">' + esc(errMsg) + '</div>' : '') +
         '<div class="meta-row">' + chips.join("") + '</div>' +
@@ -185,6 +305,7 @@
           (t.details ? '<div class="details-line">' + esc(t.details) + '</div>' : '') +
           (t.raw_transcript ? esc(t.raw_transcript) : '') +
         '</div>' : '') +
+        priorityHtml +
         actionsHtml +
       '</div>';
   }
@@ -200,6 +321,10 @@
     if (idx === -1) return;
     var neighborIdx = direction === "up" ? idx - 1 : idx + 1;
     if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
+    // Only swap within the same priority group — same-priority items are
+    // contiguous in the sorted list, so an adjacent index is only a valid
+    // neighbor if it shares this task's priority.
+    if (priorityRank(sorted[neighborIdx].priority) !== priorityRank(sorted[idx].priority)) return;
 
     var a = sorted[idx];
     var b = sorted[neighborIdx];
@@ -224,6 +349,51 @@
         errorIds[id] = "Could not reorder: " + failed.error.message;
         render();
       }
+    });
+  }
+
+  function setPriority(id, level) {
+    var idx = allTasks.findIndex(function (t) { return t.id === id; });
+    if (idx === -1) return;
+    var prevPriority = allTasks[idx].priority || null;
+    // Clicking the already-active level clears it back to no priority.
+    var nextPriority = prevPriority === level ? null : level;
+
+    allTasks[idx].priority = nextPriority;
+    render();
+
+    sb.from("tasks").update({ priority: nextPriority }).eq("id", id).then(function (res) {
+      if (res.error) {
+        allTasks[idx].priority = prevPriority;
+        errorIds[id] = "Could not set priority: " + res.error.message;
+        render();
+      }
+    });
+  }
+
+  function cancelTitleEdit(id) {
+    delete editingIds[id];
+    render();
+  }
+
+  function saveTitle(id) {
+    var draft = (editingIds[id] || "").trim();
+    if (!draft) { cancelTitleEdit(id); return; }
+
+    var idx = allTasks.findIndex(function (t) { return t.id === id; });
+    var prevTitle = idx !== -1 ? allTasks[idx].title : null;
+    if (idx !== -1) allTasks[idx].title = draft;
+    delete editingIds[id];
+    busyIds[id] = true;
+    render();
+
+    sb.from("tasks").update({ title: draft }).eq("id", id).then(function (res) {
+      delete busyIds[id];
+      if (res.error) {
+        if (idx !== -1) allTasks[idx].title = prevTitle;
+        errorIds[id] = "Could not save title: " + res.error.message;
+      }
+      render();
     });
   }
 
