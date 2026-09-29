@@ -12,10 +12,6 @@
     --text: #232320;
     --text-dim: #6f6b60;
     --accent: #a8562f;
-    --pending-bg: #fbeee4;
-    --pending-border: #e3b48a;
-    --pending-text: #96501f;
-    --pin-color: #c98a1f;
     --danger: #b8503f;
     --radius: 12px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -24,16 +20,12 @@
     :root:not([data-theme="light"]) {
       --bg: #171613; --surface: #211f1b; --border: #363228;
       --text: #ece8e0; --text-dim: #a39c8e; --accent: #e08a5b;
-      --pending-bg: #3a2c1c; --pending-border: #6b4a24; --pending-text: #e0a35f;
-      --pin-color: #e0b35f;
       --danger: #e08170;
     }
   }
   :root[data-theme="dark"] {
     --bg: #171613; --surface: #211f1b; --border: #363228;
     --text: #ece8e0; --text-dim: #a39c8e; --accent: #e08a5b;
-    --pending-bg: #3a2c1c; --pending-border: #6b4a24; --pending-text: #e0a35f;
-    --pin-color: #e0b35f;
     --danger: #e08170;
   }
   * { box-sizing: border-box; }
@@ -51,28 +43,9 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 14px 16px; position: relative;
   }
-  .card.pending { border-color: var(--pending-border); background: var(--pending-bg); }
-  .card.pinned { border-color: var(--pin-color); }
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .title-row { display: flex; align-items: center; gap: 6px; }
-  .pin-icon { font-size: 0.9rem; line-height: 1; }
   .title { font-weight: 600; font-size: 0.98rem; line-height: 1.35; }
-  .pending-pill {
-    flex-shrink: 0; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.03em;
-    text-transform: uppercase; color: var(--pending-text); background: var(--pending-border);
-    border-radius: 100px; padding: 2px 8px; white-space: nowrap;
-  }
   .details-line { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 6px; line-height: 1.4; }
-  .note {
-    margin-top: 8px; font-size: 0.82rem; color: var(--pending-text);
-    background: rgba(0,0,0,0.03); border-radius: 8px; padding: 7px 10px;
-  }
-  .preview {
-    margin-top: 8px; font-size: 0.82rem; color: var(--text); line-height: 1.4;
-    background: var(--surface); border: 1px dashed var(--pending-border);
-    border-radius: 8px; padding: 7px 10px;
-  }
-  .preview b { font-weight: 600; }
   .error-banner {
     margin-top: 8px; font-size: 0.8rem; color: var(--danger);
     background: rgba(184,80,63,0.08); border-radius: 8px; padding: 7px 10px;
@@ -93,35 +66,27 @@
     margin-top: 6px; font-size: 0.82rem; color: var(--text-dim); font-style: italic;
     border-left: 2px solid var(--border); padding-left: 10px;
   }
-  .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
   .actions button {
     font-size: 0.8rem; font-weight: 600; border-radius: 100px; padding: 6px 14px;
     cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
     display: inline-flex; align-items: center; gap: 5px;
   }
-  .actions button:disabled { opacity: 0.55; cursor: default; }
-  .actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .actions button.danger { color: var(--danger); }
-  .actions button.pin-btn.active { background: var(--pin-color); border-color: var(--pin-color); color: #fff; }
+  .actions button:disabled { opacity: 0.4; cursor: default; }
+  .order-btn { padding: 6px 10px !important; font-size: 0.9rem !important; line-height: 1; }
   .empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: 0.9rem; }
   .status-line { text-align: center; color: var(--text-dim); font-size: 0.75rem; margin-top: 26px; }
   .err {
-    background: var(--pending-bg); border: 1px solid var(--pending-border); color: var(--pending-text);
+    background: var(--surface); border: 1px solid var(--border); color: var(--danger);
     border-radius: var(--radius); padding: 14px 16px; font-size: 0.85rem; line-height: 1.5;
   }
-  .spinner {
-    display: inline-block; width: 11px; height: 11px; border-radius: 50%;
-    border: 2px solid currentColor; border-top-color: transparent;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Voice Tasks</h1>
-    <div class="sub">Dictated tasks, matched and refined automatically.</div>
+    <div class="sub">Dictated tasks, cleaned up automatically.</div>
   </header>
 
   <div class="list" id="list"></div>
@@ -141,7 +106,7 @@
   var emptyEl = document.getElementById("empty");
   var statusEl = document.getElementById("statusLine");
   var allTasks = [];
-  var busyIds = {};   // task id -> true while confirm/delete/pin/done is in flight
+  var busyIds = {};   // task id -> true while an update is in flight
   var errorIds = {};  // task id -> error message to show inline
 
   function esc(s) {
@@ -159,54 +124,28 @@
     } catch (e) { return ""; }
   }
 
-  function fmtTimeOnly(iso) {
-    if (!iso) return "";
-    try {
-      return new Date(iso).toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
-    } catch (e) { return ""; }
-  }
-
-  function actionLabel(t) {
-    if (t.action_taken === "created_event") return "Calendar event created";
-    if (t.action_taken === "drafted_email") return "Email drafted";
-    return null;
-  }
-
-  function pendingPreview(t) {
-    var type = t.pending_action_type;
-    var p = t.pending_action_params || {};
-    if (type === "created_event") {
-      var when = fmtDate(p.start);
-      var endTime = fmtTimeOnly(p.end);
-      return "Will create calendar event: <b>" + esc(p.summary || "(untitled)") + "</b>" +
-        (when ? ", " + esc(when) + (endTime ? "–" + esc(endTime) : "") : "");
-    }
-    if (type === "drafted_email") {
-      return "Will draft email to <b>" + esc(p.to || "?") + "</b>: " + esc(p.subject || "(no subject)");
-    }
-    return null;
+  function sortedTasks() {
+    return allTasks.slice().sort(function (a, b) {
+      return (b.position || 0) - (a.position || 0);
+    });
   }
 
   function render() {
-    var sorted = allTasks.slice().sort(function (a, b) {
-      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
-      return new Date(b.created_at) - new Date(a.created_at);
-    });
+    var sorted = sortedTasks();
 
     emptyEl.hidden = sorted.length !== 0;
-    listEl.innerHTML = sorted.map(renderCard).join("");
+    listEl.innerHTML = sorted.map(function (t, i) {
+      return renderCard(t, i === 0, i === sorted.length - 1);
+    }).join("");
 
-    Array.prototype.forEach.call(listEl.querySelectorAll("[data-pin]"), function (btn) {
-      btn.addEventListener("click", function () { togglePin(btn.getAttribute("data-pin")); });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-up]"), function (btn) {
+      btn.addEventListener("click", function () { moveTask(btn.getAttribute("data-up"), "up"); });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-down]"), function (btn) {
+      btn.addEventListener("click", function () { moveTask(btn.getAttribute("data-down"), "down"); });
     });
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-done]"), function (btn) {
       btn.addEventListener("click", function () { markDone(btn.getAttribute("data-done")); });
-    });
-    Array.prototype.forEach.call(listEl.querySelectorAll("[data-confirm]"), function (btn) {
-      btn.addEventListener("click", function () { confirmTask(btn.getAttribute("data-confirm")); });
-    });
-    Array.prototype.forEach.call(listEl.querySelectorAll("[data-delete]"), function (btn) {
-      btn.addEventListener("click", function () { deleteTask(btn.getAttribute("data-delete")); });
     });
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-raw-toggle]"), function (btn) {
       btn.addEventListener("click", function () {
@@ -218,52 +157,27 @@
     });
   }
 
-  function renderCard(t) {
-    var isPending = t.confidence === "uncertain";
-    var isPinned = !!t.pinned;
+  function renderCard(t, isFirst, isLast) {
     var isBusy = !!busyIds[t.id];
-    var classes = "card" + (isPending ? " pending" : "") + (isPinned ? " pinned" : "");
-    var action = actionLabel(t);
+    var hasExpand = !!(t.raw_transcript || t.details);
+    var errMsg = errorIds[t.id];
 
     var chips = [];
     if (t.due_date) chips.push('<span class="chip">Due ' + esc(fmtDate(t.due_date)) + '</span>');
-    if (action) chips.push('<span class="chip">' + esc(action) + '</span>');
     chips.push('<span class="chip">' + esc(fmtDate(t.created_at)) + '</span>');
 
-    var preview = isPending ? pendingPreview(t) : null;
-    var errMsg = errorIds[t.id];
-    var hasExpand = !!(t.raw_transcript || t.details);
-
-    var actionsHtml;
-    if (isPending) {
-      actionsHtml =
-        '<div class="actions">' +
-          '<button class="primary" data-confirm="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>' +
-            (isBusy ? '<span class="spinner"></span> Confirming…' : 'Confirm') +
-          '</button>' +
-          '<button class="danger" data-delete="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Delete</button>' +
-        '</div>';
-    } else {
-      actionsHtml =
-        '<div class="actions">' +
-          '<button class="pin-btn' + (isPinned ? ' active' : '') + '" data-pin="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>' +
-            (isPinned ? '📌 Unpin' : '📌 Pin') +
-          '</button>' +
-          '<button data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Mark done</button>' +
-        '</div>';
-    }
+    var actionsHtml =
+      '<div class="actions">' +
+        '<button class="order-btn" data-up="' + t.id + '" ' + (isBusy || isFirst ? "disabled" : "") + '>&#9650;</button>' +
+        '<button class="order-btn" data-down="' + t.id + '" ' + (isBusy || isLast ? "disabled" : "") + '>&#9660;</button>' +
+        '<button data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Mark done</button>' +
+      '</div>';
 
     return '' +
-      '<div class="' + classes + '">' +
+      '<div class="card">' +
         '<div class="card-top">' +
-          '<div class="title-row">' +
-            (isPinned ? '<span class="pin-icon">📌</span>' : '') +
-            '<div class="title">' + esc(t.title) + '</div>' +
-          '</div>' +
-          (isPending ? '<span class="pending-pill">Pending</span>' : '') +
+          '<div class="title">' + esc(t.title) + '</div>' +
         '</div>' +
-        (isPending && t.confidence_note ? '<div class="note">' + esc(t.confidence_note) + '</div>' : '') +
-        (preview ? '<div class="preview">' + preview + '</div>' : '') +
         (errMsg ? '<div class="error-banner">' + esc(errMsg) + '</div>' : '') +
         '<div class="meta-row">' + chips.join("") + '</div>' +
         (hasExpand ? '<button class="raw-toggle" data-raw-toggle="' + t.id + '">Show original</button>' : '') +
@@ -280,16 +194,34 @@
     render();
   }
 
-  function togglePin(id) {
-    var idx = allTasks.findIndex(function (t) { return t.id === id; });
+  function moveTask(id, direction) {
+    var sorted = sortedTasks();
+    var idx = sorted.findIndex(function (t) { return t.id === id; });
     if (idx === -1) return;
-    var newVal = !allTasks[idx].pinned;
-    allTasks[idx].pinned = newVal;
+    var neighborIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
+
+    var a = sorted[idx];
+    var b = sorted[neighborIdx];
+    var aPos = a.position, bPos = b.position;
+
+    // Swap positions locally for an instant reorder, then persist both rows.
+    var aIdx = allTasks.findIndex(function (t) { return t.id === a.id; });
+    var bIdx = allTasks.findIndex(function (t) { return t.id === b.id; });
+    allTasks[aIdx].position = bPos;
+    allTasks[bIdx].position = aPos;
     render();
-    sb.from("tasks").update({ pinned: newVal }).eq("id", id).then(function (res) {
-      if (res.error) {
-        allTasks[idx].pinned = !newVal;
-        errorIds[id] = "Could not update pin: " + res.error.message;
+
+    Promise.all([
+      sb.from("tasks").update({ position: bPos }).eq("id", a.id),
+      sb.from("tasks").update({ position: aPos }).eq("id", b.id),
+    ]).then(function (results) {
+      var failed = results.find(function (r) { return r.error; });
+      if (failed) {
+        // Revert on failure.
+        allTasks[aIdx].position = aPos;
+        allTasks[bIdx].position = bPos;
+        errorIds[id] = "Could not reorder: " + failed.error.message;
         render();
       }
     });
@@ -309,50 +241,9 @@
     });
   }
 
-  function deleteTask(id) {
-    busyIds[id] = true;
-    render();
-    sb.from("tasks").delete().eq("id", id).then(function (res) {
-      delete busyIds[id];
-      if (res.error) {
-        errorIds[id] = "Could not delete: " + res.error.message;
-        render();
-        return;
-      }
-      removeLocally(id);
-    });
-  }
-
-  function confirmTask(id) {
-    busyIds[id] = true;
-    delete errorIds[id];
-    render();
-    sb.functions.invoke("voice-task", { body: { task_id: id } }).then(function (res) {
-      delete busyIds[id];
-      var data = res.data;
-      var invokeErr = res.error;
-      if (invokeErr || !data || data.ok === false) {
-        errorIds[id] = "Couldn't create — try again" + ((data && data.error) ? (": " + data.error) : "");
-        render();
-        return;
-      }
-      // Success: replace the task locally with the server's updated copy
-      // (confidence flips to "confident", pending fields clear, action_taken set).
-      if (data.task) {
-        var idx = allTasks.findIndex(function (t) { return t.id === id; });
-        if (idx !== -1) allTasks[idx] = data.task;
-      }
-      render();
-    }).catch(function (e) {
-      delete busyIds[id];
-      errorIds[id] = "Couldn't create — try again: " + String(e);
-      render();
-    });
-  }
-
   function load() {
     statusEl.textContent = "Loading…";
-    sb.from("tasks").select("*").order("created_at", { ascending: false }).limit(200)
+    sb.from("tasks").select("*").order("position", { ascending: false }).limit(200)
       .then(function (res) {
         if (res.error) {
           listEl.innerHTML = '';
