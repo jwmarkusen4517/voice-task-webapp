@@ -93,7 +93,7 @@
     display: inline-flex; align-items: center; gap: 4px;
   }
   .raw-toggle {
-    margin-top: 8px; font-size: 0.78rem; color: var(--accent); cursor: pointer;
+    font-size: 0.72rem; color: var(--accent); cursor: pointer;
     background: none; border: none; padding: 0; font-weight: 600;
   }
   .raw-text {
@@ -101,7 +101,11 @@
     border-left: 2px solid var(--border); padding-left: 10px;
   }
 
-  .priority-row { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+  .bottom-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .priority-group { display: flex; align-items: center; gap: 6px; }
   .priority-label { font-size: 0.7rem; color: var(--text-dim); margin-right: 2px; }
   .priority-btn {
     width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
@@ -114,14 +118,13 @@
   .priority-btn.on-2 { background: var(--p2-solid); border-color: var(--p2-solid); color: #fff; }
   .priority-btn.on-3 { background: var(--p3-solid); border-color: var(--p3-solid); color: #fff; }
 
-  .actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .actions { display: flex; align-items: center; gap: 8px; }
   .actions button {
     font-size: 0.8rem; font-weight: 600; border-radius: 100px; padding: 6px 14px;
     cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text);
     display: inline-flex; align-items: center; gap: 5px;
   }
   .actions button:disabled { opacity: 0.4; cursor: default; }
-  .order-btn { padding: 6px 10px !important; font-size: 0.9rem !important; line-height: 1; }
   .empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: 0.9rem; }
   .status-line { text-align: center; color: var(--text-dim); font-size: 0.75rem; margin-top: 26px; }
   .err {
@@ -191,18 +194,10 @@
     var sorted = sortedTasks();
 
     emptyEl.hidden = sorted.length !== 0;
-    listEl.innerHTML = sorted.map(function (t, i) {
-      var prevSame = i > 0 && priorityRank(sorted[i - 1].priority) === priorityRank(t.priority);
-      var nextSame = i < sorted.length - 1 && priorityRank(sorted[i + 1].priority) === priorityRank(t.priority);
-      return renderCard(t, !prevSame, !nextSame);
+    listEl.innerHTML = sorted.map(function (t) {
+      return renderCard(t);
     }).join("");
 
-    Array.prototype.forEach.call(listEl.querySelectorAll("[data-up]"), function (btn) {
-      btn.addEventListener("click", function () { moveTask(btn.getAttribute("data-up"), "up"); });
-    });
-    Array.prototype.forEach.call(listEl.querySelectorAll("[data-down]"), function (btn) {
-      btn.addEventListener("click", function () { moveTask(btn.getAttribute("data-down"), "down"); });
-    });
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-done]"), function (btn) {
       btn.addEventListener("click", function () { markDone(btn.getAttribute("data-done")); });
     });
@@ -247,7 +242,7 @@
     });
   }
 
-  function renderCard(t, isFirst, isLast) {
+  function renderCard(t) {
     var isBusy = !!busyIds[t.id];
     var hasExpand = !!(t.raw_transcript || t.details);
     var errMsg = errorIds[t.id];
@@ -258,6 +253,7 @@
     var chips = [];
     if (t.due_date) chips.push('<span class="chip">Due ' + esc(fmtDate(t.due_date)) + '</span>');
     chips.push('<span class="chip">' + esc(fmtDate(t.created_at)) + '</span>');
+    if (hasExpand) chips.push('<button class="raw-toggle" data-raw-toggle="' + t.id + '">Show original</button>');
 
     var titleHtml;
     if (isEditing) {
@@ -277,20 +273,18 @@
         '</div>';
     }
 
-    var priorityHtml =
-      '<div class="priority-row">' +
-        '<span class="priority-label">Priority</span>' +
-        [1, 2, 3].map(function (level) {
-          var on = priority === level ? " on-" + level : "";
-          return '<button class="priority-btn' + on + '" data-priority="' + t.id + '" data-level="' + level + '" ' + (isBusy ? "disabled" : "") + '>' + level + '</button>';
-        }).join("") +
-      '</div>';
-
-    var actionsHtml =
-      '<div class="actions">' +
-        '<button class="order-btn" data-up="' + t.id + '" ' + (isBusy || isFirst ? "disabled" : "") + '>&#9650;</button>' +
-        '<button class="order-btn" data-down="' + t.id + '" ' + (isBusy || isLast ? "disabled" : "") + '>&#9660;</button>' +
-        '<button data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Mark done</button>' +
+    var bottomRowHtml =
+      '<div class="bottom-row">' +
+        '<div class="priority-group">' +
+          '<span class="priority-label">Priority</span>' +
+          [1, 2, 3].map(function (level) {
+            var on = priority === level ? " on-" + level : "";
+            return '<button class="priority-btn' + on + '" data-priority="' + t.id + '" data-level="' + level + '" ' + (isBusy ? "disabled" : "") + '>' + level + '</button>';
+          }).join("") +
+        '</div>' +
+        '<div class="actions">' +
+          '<button data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Done &#10003;</button>' +
+        '</div>' +
       '</div>';
 
     return '' +
@@ -300,56 +294,17 @@
         '</div>' +
         (errMsg ? '<div class="error-banner">' + esc(errMsg) + '</div>' : '') +
         '<div class="meta-row">' + chips.join("") + '</div>' +
-        (hasExpand ? '<button class="raw-toggle" data-raw-toggle="' + t.id + '">Show original</button>' : '') +
         (hasExpand ? '<div class="raw-text" data-raw-text="' + t.id + '" hidden>' +
           (t.details ? '<div class="details-line">' + esc(t.details) + '</div>' : '') +
           (t.raw_transcript ? esc(t.raw_transcript) : '') +
         '</div>' : '') +
-        priorityHtml +
-        actionsHtml +
+        bottomRowHtml +
       '</div>';
   }
 
   function removeLocally(id) {
     allTasks = allTasks.filter(function (t) { return t.id !== id; });
     render();
-  }
-
-  function moveTask(id, direction) {
-    var sorted = sortedTasks();
-    var idx = sorted.findIndex(function (t) { return t.id === id; });
-    if (idx === -1) return;
-    var neighborIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
-    // Only swap within the same priority group — same-priority items are
-    // contiguous in the sorted list, so an adjacent index is only a valid
-    // neighbor if it shares this task's priority.
-    if (priorityRank(sorted[neighborIdx].priority) !== priorityRank(sorted[idx].priority)) return;
-
-    var a = sorted[idx];
-    var b = sorted[neighborIdx];
-    var aPos = a.position, bPos = b.position;
-
-    // Swap positions locally for an instant reorder, then persist both rows.
-    var aIdx = allTasks.findIndex(function (t) { return t.id === a.id; });
-    var bIdx = allTasks.findIndex(function (t) { return t.id === b.id; });
-    allTasks[aIdx].position = bPos;
-    allTasks[bIdx].position = aPos;
-    render();
-
-    Promise.all([
-      sb.from("tasks").update({ position: bPos }).eq("id", a.id),
-      sb.from("tasks").update({ position: aPos }).eq("id", b.id),
-    ]).then(function (results) {
-      var failed = results.find(function (r) { return r.error; });
-      if (failed) {
-        // Revert on failure.
-        allTasks[aIdx].position = aPos;
-        allTasks[bIdx].position = bPos;
-        errorIds[id] = "Could not reorder: " + failed.error.message;
-        render();
-      }
-    });
   }
 
   function setPriority(id, level) {
