@@ -50,8 +50,26 @@
   header { margin-bottom: 20px; }
   h1 { font-size: 1.4rem; margin: 0 0 4px; font-weight: 700; }
   .sub { color: var(--text-dim); font-size: 0.85rem; }
+  .stats {
+    color: var(--text-dim); font-size: 0.78rem; margin-top: 8px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  }
+  .stats b { color: var(--text); font-weight: 700; }
+  .stats .dot-1 { color: var(--p1-solid); font-weight: 700; }
+  .stats .dot-2 { color: var(--p2-solid); font-weight: 700; }
+  .stats .dot-3 { color: var(--p3-solid); font-weight: 700; }
 
-  .list { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .section-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--text-dim); margin-top: 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  .section-label .dot-0 { color: var(--text-dim); }
+  .section-label .dot-1 { color: var(--p1-solid); }
+  .section-label .dot-2 { color: var(--p2-solid); }
+  .section-label .dot-3 { color: var(--p3-solid); }
+
+  .list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 14px 16px; position: relative;
@@ -134,6 +152,7 @@
   <header>
     <h1>Voice Tasks</h1>
     <div class="sub">Dictated tasks, cleaned up automatically.</div>
+    <div class="stats" id="statsRow"></div>
   </header>
 
   <div class="list" id="list"></div>
@@ -152,6 +171,7 @@
   var listEl = document.getElementById("list");
   var emptyEl = document.getElementById("empty");
   var statusEl = document.getElementById("statusLine");
+  var statsEl = document.getElementById("statsRow");
   var allTasks = [];
   var busyIds = {};    // task id -> true while an update is in flight
   var errorIds = {};   // task id -> error message to show inline
@@ -172,12 +192,20 @@
     } catch (e) { return ""; }
   }
 
+  // Rank 0 = uncategorized (new, not yet triaged) so it always sorts first;
+  // 1/2/3 are the priority levels.
   function priorityRank(p) {
-    return p === 1 || p === 2 || p === 3 ? p : 4;
+    return p === 1 || p === 2 || p === 3 ? p : 0;
   }
 
-  // Grouped by priority (1, 2, 3, then no priority), and by position (most
-  // recent first) within each group.
+  function sectionLabel(rank) {
+    return rank === 0
+      ? '<span class="dot-0">&#9679;</span> New / Uncategorized'
+      : '<span class="dot-' + rank + '">&#9679;</span> Priority ' + rank;
+  }
+
+  // Grouped by priority (no priority first, then 1, 2, 3), and by position
+  // (most recent first) within each group.
   function sortedTasks() {
     return allTasks.slice().sort(function (a, b) {
       var pr = priorityRank(a.priority) - priorityRank(b.priority);
@@ -186,13 +214,34 @@
     });
   }
 
+  function renderStats() {
+    var counts = { 0: 0, 1: 0, 2: 0, 3: 0 };
+    allTasks.forEach(function (t) { counts[priorityRank(t.priority)]++; });
+    statsEl.innerHTML =
+      '<span><b>' + allTasks.length + '</b> tasks</span>' +
+      '<span>' + counts[0] + ' uncategorized</span>' +
+      '<span class="dot-1">' + counts[1] + ' · 1</span>' +
+      '<span class="dot-2">' + counts[2] + ' · 2</span>' +
+      '<span class="dot-3">' + counts[3] + ' · 3</span>';
+  }
+
   function render() {
     var sorted = sortedTasks();
 
+    renderStats();
     emptyEl.hidden = sorted.length !== 0;
-    listEl.innerHTML = sorted.map(function (t) {
-      return renderCard(t);
-    }).join("");
+
+    var html = "";
+    var lastRank = null;
+    sorted.forEach(function (t) {
+      var rank = priorityRank(t.priority);
+      if (rank !== lastRank) {
+        html += '<div class="section-label">' + sectionLabel(rank) + '</div>';
+        lastRank = rank;
+      }
+      html += renderCard(t);
+    });
+    listEl.innerHTML = html;
 
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-done]"), function (btn) {
       btn.addEventListener("click", function () { markDone(btn.getAttribute("data-done")); });
