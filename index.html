@@ -19,6 +19,8 @@
     --p2-solid: #b7930f;
     --p3-solid: #3b6fb0;
 
+    --done-bg: #eaf6ec; --done-border: #a9d9b2; --done-text: #2f7d41;
+
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
@@ -30,6 +32,8 @@
       --p1-solid: #e0685a;
       --p2-solid: #d8bb56;
       --p3-solid: #6ea0e0;
+
+      --done-bg: #1c2e1f; --done-border: #3a6b45; --done-text: #7bc98c;
     }
   }
   :root[data-theme="dark"] {
@@ -40,6 +44,8 @@
     --p1-solid: #e0685a;
     --p2-solid: #d8bb56;
     --p3-solid: #6ea0e0;
+
+    --done-bg: #1c2e1f; --done-border: #3a6b45; --done-text: #7bc98c;
   }
   * { box-sizing: border-box; }
   body {
@@ -119,7 +125,6 @@
     gap: 8px; margin-top: 12px; flex-wrap: wrap;
   }
   .priority-group { display: flex; align-items: center; gap: 6px; }
-  .priority-label { font-size: 0.7rem; color: var(--text-dim); margin-right: 2px; }
   .priority-btn {
     width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
     border: 1.5px solid var(--border); background: var(--surface); color: var(--text-dim);
@@ -138,6 +143,10 @@
     display: inline-flex; align-items: center; gap: 5px;
   }
   .actions button:disabled { opacity: 0.4; cursor: default; }
+  .done-btn {
+    background: var(--done-bg) !important; border-color: var(--done-border) !important;
+    color: var(--done-text) !important;
+  }
   .empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: 0.9rem; }
   .err {
     background: var(--surface); border: 1px solid var(--border); color: var(--danger);
@@ -317,14 +326,13 @@
     var bottomRowHtml =
       '<div class="bottom-row">' +
         '<div class="priority-group">' +
-          '<span class="priority-label">Priority</span>' +
           [1, 2, 3].map(function (level) {
             var on = priority === level ? " on-" + level : "";
             return '<button class="priority-btn' + on + '" data-priority="' + t.id + '" data-level="' + level + '" ' + (isBusy ? "disabled" : "") + '>' + level + '</button>';
           }).join("") +
         '</div>' +
         '<div class="actions">' +
-          '<button data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Done &#10003;</button>' +
+          '<button class="done-btn" data-done="' + t.id + '" ' + (isBusy ? "disabled" : "") + '>Done &#10003;</button>' +
         '</div>' +
       '</div>';
 
