@@ -85,7 +85,8 @@
   .title-input {
     font-weight: 600; font-size: 0.98rem; line-height: 1.35; font-family: inherit;
     flex: 1; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 6px;
-    background: var(--surface); color: var(--text); min-width: 0;
+    background: var(--surface); color: var(--text); min-width: 0; width: 100%;
+    resize: none; overflow: hidden; white-space: pre-wrap; word-break: break-word;
   }
   .edit-btn {
     background: none; border: none; cursor: pointer; color: var(--text-dim);
@@ -144,7 +145,7 @@
   }
   .actions button:disabled { opacity: 0.4; cursor: default; }
   .done-btn {
-    background: var(--done-bg) !important; border-color: var(--done-border) !important;
+    background: var(--surface) !important; border-color: var(--done-text) !important;
     color: var(--done-text) !important;
   }
   .empty { text-align: center; color: var(--text-dim); padding: 40px 0; font-size: 0.9rem; }
@@ -187,6 +188,11 @@
     var d = document.createElement("div");
     d.textContent = s == null ? "" : String(s);
     return d.innerHTML;
+  }
+
+  function autoSizeTextarea(el) {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
   }
 
   function fmtDate(iso) {
@@ -274,14 +280,18 @@
         editingIds[id] = t ? t.title : "";
         render();
         var input = listEl.querySelector('[data-title-input="' + id + '"]');
-        if (input) { input.focus(); input.select(); }
+        if (input) { input.focus(); input.select(); autoSizeTextarea(input); }
       });
     });
     Array.prototype.forEach.call(listEl.querySelectorAll("[data-title-input]"), function (input) {
       var id = input.getAttribute("data-title-input");
-      input.addEventListener("input", function () { editingIds[id] = input.value; });
+      autoSizeTextarea(input);
+      input.addEventListener("input", function () {
+        editingIds[id] = input.value;
+        autoSizeTextarea(input);
+      });
       input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") { e.preventDefault(); saveTitle(id); }
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveTitle(id); }
         else if (e.key === "Escape") { e.preventDefault(); cancelTitleEdit(id); }
       });
     });
@@ -309,7 +319,7 @@
     if (isEditing) {
       titleHtml =
         '<div class="title-row">' +
-          '<input class="title-input" data-title-input="' + t.id + '" value="' + esc(editingIds[t.id]) + '">' +
+          '<textarea class="title-input" data-title-input="' + t.id + '" rows="1">' + esc(editingIds[t.id]) + '</textarea>' +
         '</div>' +
         '<div class="title-save-row">' +
           '<button data-save-title="' + t.id + '">Save</button>' +
